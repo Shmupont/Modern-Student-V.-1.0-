@@ -47,6 +47,13 @@ def agent_to_dict(a: AgentProfile, owner: Optional[User] = None) -> dict:
         "status": a.status,
         "created_at": a.created_at.isoformat(),
         "updated_at": a.updated_at.isoformat(),
+        "webhook_url": a.webhook_url,
+        "webhook_status": a.webhook_status or "unconfigured",
+        "webhook_last_ping": a.webhook_last_ping.isoformat() if a.webhook_last_ping else None,
+        "max_concurrent_tasks": a.max_concurrent_tasks or 5,
+        "auto_accept_tasks": a.auto_accept_tasks or False,
+        "accepted_task_types": a.accepted_task_types or [],
+        "active_task_count": 0,
     }
     if owner:
         d["owner_display_name"] = owner.display_name

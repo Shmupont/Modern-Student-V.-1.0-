@@ -16,7 +16,7 @@ import {
   Tag,
   Bot,
 } from "lucide-react";
-import { getAgentBySlug, startConversation, type AgentProfile } from "@/lib/api";
+import { getAgentBySlug, startConversation, createTask, type AgentProfile } from "@/lib/api";
 import { formatCategory, formatCurrency, timeAgo } from "@/lib/utils";
 import { getToken } from "@/lib/auth";
 
@@ -32,6 +32,12 @@ export default function AgentDetailPage() {
   const [messageSubject, setMessageSubject] = useState("");
   const [messageContent, setMessageContent] = useState("");
   const [sending, setSending] = useState(false);
+  const [hireOpen, setHireOpen] = useState(false);
+  const [hireTitle, setHireTitle] = useState("");
+  const [hireDesc, setHireDesc] = useState("");
+  const [hireBudget, setHireBudget] = useState("");
+  const [hireDeadline, setHireDeadline] = useState("");
+  const [hiring, setHiring] = useState(false);
 
   useEffect(() => {
     getAgentBySlug(slug)
@@ -62,6 +68,34 @@ export default function AgentDetailPage() {
       // ignore
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleHire(e: React.FormEvent) {
+    e.preventDefault();
+    if (!agent || !hireTitle.trim()) return;
+
+    const token = getToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setHiring(true);
+    try {
+      const task = await createTask(token, {
+        agent_profile_id: agent.id,
+        title: hireTitle.trim(),
+        description: hireDesc.trim(),
+        category: agent.category,
+        budget_cents: Math.round(parseFloat(hireBudget || "0") * 100),
+        deadline: hireDeadline || new Date(Date.now() + 7 * 86400000).toISOString(),
+      });
+      router.push(`/dashboard/tasks/${task.id}`);
+    } catch {
+      // ignore
+    } finally {
+      setHiring(false);
     }
   }
 
@@ -152,16 +186,85 @@ export default function AgentDetailPage() {
 
           <div className="flex flex-col gap-2 shrink-0 sm:items-end w-full sm:w-auto">
             <button
-              onClick={() => setMessageOpen(!messageOpen)}
+              onClick={() => { setHireOpen(!hireOpen); setMessageOpen(false); }}
               className="flex items-center justify-center gap-2 bg-[var(--accent)] text-[var(--background)] font-semibold rounded-lg px-5 py-2.5 text-sm hover:bg-[var(--accent-hover)] transition-colors w-full sm:w-auto"
             >
-              <MessageSquare className="w-4 h-4" /> Contact Agent
+              <DollarSign className="w-4 h-4" /> Hire Agent
+            </button>
+            <button
+              onClick={() => { setMessageOpen(!messageOpen); setHireOpen(false); }}
+              className="flex items-center justify-center gap-2 border border-[var(--border)] text-[var(--foreground)] font-medium rounded-lg px-5 py-2.5 text-sm hover:bg-[var(--surface)] transition-colors w-full sm:w-auto"
+            >
+              <MessageSquare className="w-4 h-4" /> Message
             </button>
             {agent.pricing_model && (
               <span className="text-sm text-[var(--muted)] font-mono text-center sm:text-right">{agent.pricing_model}</span>
             )}
           </div>
         </div>
+
+        {/* Hire form */}
+        {hireOpen && (
+          <div className="bg-[var(--surface)] border border-[var(--accent)]/30 rounded-xl p-5 mb-8">
+            <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3">Hire {agent.name}</h3>
+            <form onSubmit={handleHire} className="space-y-3">
+              <input
+                type="text"
+                value={hireTitle}
+                onChange={(e) => setHireTitle(e.target.value)}
+                required
+                placeholder="Task title — what do you need done?"
+                className="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+              />
+              <textarea
+                value={hireDesc}
+                onChange={(e) => setHireDesc(e.target.value)}
+                rows={3}
+                placeholder="Describe the task in detail..."
+                className="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 resize-none"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-[var(--muted)] mb-1">Budget (USD)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={hireBudget}
+                    onChange={(e) => setHireBudget(e.target.value)}
+                    placeholder="50.00"
+                    className="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--muted)] mb-1">Deadline</label>
+                  <input
+                    type="date"
+                    value={hireDeadline}
+                    onChange={(e) => setHireDeadline(e.target.value)}
+                    className="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={hiring || !hireTitle.trim()}
+                  className="bg-[var(--accent)] text-[var(--background)] font-semibold rounded-lg px-4 py-2 text-sm hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50"
+                >
+                  {hiring ? "Submitting..." : "Submit Task"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHireOpen(false)}
+                  className="text-sm text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Contact form */}
         {messageOpen && (

@@ -83,6 +83,14 @@ class AgentProfile(SQLModel, table=True):
     status: str = "active"
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
+    # Webhook / Docking
+    webhook_url: Optional[str] = None
+    webhook_secret: Optional[str] = None
+    webhook_status: str = "unconfigured"
+    webhook_last_ping: Optional[datetime] = None
+    max_concurrent_tasks: int = 5
+    auto_accept_tasks: bool = False
+    accepted_task_types: list = Field(default=[], sa_column=Column(JSONList))
 
 
 # ── Conversation ────────────────────────────────────────────────
@@ -111,4 +119,48 @@ class Message(SQLModel, table=True):
     sender_id: str = Field(foreign_key="users.id")
     content: str
     is_read: bool = False
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+# ── Task ────────────────────────────────────────────────────────
+
+class Task(SQLModel, table=True):
+    __tablename__ = "tasks"
+
+    id: str = Field(default_factory=new_id, primary_key=True)
+    buyer_id: str = Field(foreign_key="users.id", index=True)
+    agent_profile_id: Optional[str] = Field(default=None, foreign_key="agent_profiles.id", index=True)
+    title: str
+    description: str = ""
+    category: str = "other"
+    inputs_json: dict = Field(default={}, sa_column=Column(JSONDict))
+    constraints_json: dict = Field(default={}, sa_column=Column(JSONDict))
+    budget_cents: int = 0
+    currency: str = "USD"
+    deadline: Optional[datetime] = None
+    status: str = "posted"  # posted, assigned, dispatched, accepted, in_progress, completed, failed, expired, dispatch_failed
+    dispatched_at: Optional[datetime] = None
+    accepted_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    failed_at: Optional[datetime] = None
+    result_json: Optional[dict] = Field(default=None, sa_column=Column(JSONDict))
+    result_summary: Optional[str] = None
+    execution_time_seconds: Optional[float] = None
+    confidence_score: Optional[float] = None
+    error_message: Optional[str] = None
+    buyer_accepted: Optional[bool] = None
+    buyer_feedback: Optional[str] = None
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+# ── Task Event ──────────────────────────────────────────────────
+
+class TaskEvent(SQLModel, table=True):
+    __tablename__ = "task_events"
+
+    id: str = Field(default_factory=new_id, primary_key=True)
+    task_id: str = Field(foreign_key="tasks.id", index=True)
+    event_type: str
+    event_data: dict = Field(default={}, sa_column=Column(JSONDict))
     created_at: datetime = Field(default_factory=utcnow)
