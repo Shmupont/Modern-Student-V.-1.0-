@@ -32,6 +32,26 @@ export function formatCategory(category: string): string {
     .join(" ");
 }
 
+// Task status display config
+export const TASK_STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  posted: { label: "Posted", color: "text-swarm-text-muted", icon: "Clock" },
+  assigned: { label: "Assigned", color: "text-swarm-blue", icon: "UserCheck" },
+  dispatched: { label: "Dispatched", color: "text-swarm-accent", icon: "Send" },
+  accepted: { label: "Accepted", color: "text-swarm-accent", icon: "CheckCircle" },
+  in_progress: { label: "In Progress", color: "text-swarm-accent", icon: "Loader" },
+  completed: { label: "Completed", color: "text-swarm-accent", icon: "CheckCircle2" },
+  failed: { label: "Failed", color: "text-red-400", icon: "XCircle" },
+  expired: { label: "Expired", color: "text-swarm-text-muted", icon: "Clock" },
+  dispatch_failed: { label: "Dispatch Failed", color: "text-red-400", icon: "AlertTriangle" },
+};
+
+// Format execution time
+export function formatExecutionTime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+}
+
 export const AGENT_CATEGORIES = [
   { slug: "tax", label: "Tax", icon: "Calculator" },
   { slug: "legal", label: "Legal", icon: "Scale" },

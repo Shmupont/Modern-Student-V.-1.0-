@@ -58,6 +58,14 @@ export interface AgentProfile {
   updated_at: string;
   owner_display_name?: string | null;
   is_active?: boolean;
+  // Webhook / Docking
+  webhook_url: string | null;
+  webhook_status: string;
+  webhook_last_ping: string | null;
+  max_concurrent_tasks: number;
+  auto_accept_tasks: boolean;
+  accepted_task_types: string[];
+  active_task_count: number;
 }
 
 export interface PortfolioItem {
@@ -123,6 +131,59 @@ export interface CategoryCount {
   category: string;
   name?: string;
   count: number;
+}
+
+// ── Tasks ─────────────────────────────────────────────────────
+
+export interface Task {
+  id: string;
+  buyer_id: string;
+  agent_profile_id: string | null;
+  title: string;
+  description: string;
+  category: string;
+  inputs_json: Record<string, unknown>;
+  constraints_json: Record<string, unknown>;
+  budget_cents: number;
+  currency: string;
+  deadline: string;
+  status: string;
+  dispatched_at: string | null;
+  accepted_at: string | null;
+  completed_at: string | null;
+  failed_at: string | null;
+  result_json: Record<string, unknown> | null;
+  result_summary: string | null;
+  execution_time_seconds: number | null;
+  confidence_score: number | null;
+  error_message: string | null;
+  buyer_accepted: boolean | null;
+  buyer_feedback: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  agent_name: string | null;
+  agent_slug: string | null;
+  buyer_display_name: string | null;
+}
+
+export interface TaskEvent {
+  id: string;
+  task_id: string;
+  event_type: string;
+  event_data: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface WebhookConfig {
+  webhook_url: string;
+  webhook_secret: string | null;
+  webhook_secret_prefix: string | null;
+  webhook_status: string;
+  webhook_last_ping: string | null;
+  max_concurrent_tasks: number;
+  auto_accept_tasks: boolean;
+  accepted_task_types: string[];
 }
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -242,4 +303,85 @@ export async function markConversationRead(token: string, id: string) {
 
 export async function getDashboardStats(token: string) {
   return apiFetch<DashboardStats>("/users/dashboard-stats", { token });
+}
+
+// ── Tasks (Buyer) ────────────────────────────────────────────
+
+export async function createTask(token: string, data: {
+  agent_profile_id?: string;
+  title: string;
+  description: string;
+  category: string;
+  inputs_json?: Record<string, unknown>;
+  constraints_json?: Record<string, unknown>;
+  budget_cents: number;
+  deadline: string;
+}) {
+  return apiFetch<Task>("/tasks", { method: "POST", body: JSON.stringify(data), token });
+}
+
+export async function getMyTasks(token: string) {
+  return apiFetch<Task[]>("/tasks/mine", { token });
+}
+
+export async function getTask(token: string, taskId: string) {
+  return apiFetch<Task>(`/tasks/${taskId}`, { token });
+}
+
+export async function getTaskEvents(token: string, taskId: string) {
+  return apiFetch<TaskEvent[]>(`/tasks/${taskId}/events`, { token });
+}
+
+export async function acceptTaskResult(token: string, taskId: string, feedback?: string) {
+  return apiFetch<Task>(`/tasks/${taskId}/accept-result`, {
+    method: "POST",
+    body: JSON.stringify({ feedback }),
+    token,
+  });
+}
+
+export async function rejectTaskResult(token: string, taskId: string, feedback?: string) {
+  return apiFetch<Task>(`/tasks/${taskId}/reject-result`, {
+    method: "POST",
+    body: JSON.stringify({ feedback }),
+    token,
+  });
+}
+
+// ── Tasks (Creator — incoming to my agents) ──────────────────
+
+export async function getIncomingTasks(token: string) {
+  return apiFetch<Task[]>("/tasks/incoming", { token });
+}
+
+// ── Webhook Configuration ────────────────────────────────────
+
+export async function configureWebhook(token: string, agentId: string, data: {
+  webhook_url: string;
+  max_concurrent_tasks?: number;
+  auto_accept_tasks?: boolean;
+  accepted_task_types?: string[];
+}) {
+  return apiFetch<WebhookConfig>(`/agents/${agentId}/webhook`, {
+    method: "POST",
+    body: JSON.stringify(data),
+    token,
+  });
+}
+
+export async function testWebhook(token: string, agentId: string) {
+  return apiFetch<{ success: boolean; response_time_ms: number }>(
+    `/agents/${agentId}/webhook/test`,
+    { method: "POST", token }
+  );
+}
+
+export async function regenerateWebhookSecret(token: string, agentId: string) {
+  return apiFetch<WebhookConfig>(`/agents/${agentId}/webhook/regenerate`, {
+    method: "POST", token
+  });
+}
+
+export async function removeWebhook(token: string, agentId: string) {
+  return apiFetch(`/agents/${agentId}/webhook`, { method: "DELETE", token });
 }
