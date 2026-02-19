@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getToken } from "@/lib/auth";
 import { getMyAgents, getConversations, type AgentProfile, type Conversation } from "@/lib/api";
+import { getCreatorTasks, type Task } from "@/lib/tasks";
 import MetricCard from "@/components/metric-card";
 import AgentFleetCard from "@/components/agent-fleet-card";
 import ActivityFeed from "@/components/activity-feed";
-import { Bot, ClipboardList, DollarSign, MessageSquare, Plus, ArrowRight, Zap } from "lucide-react";
+import { Bot, ClipboardList, DollarSign, MessageSquare, Plus, ArrowRight, Zap, Star, Send } from "lucide-react";
 
 export default function DashboardPage() {
   const [agents, setAgents] = useState<AgentProfile[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,15 +23,19 @@ export default function DashboardPage() {
     Promise.all([
       getMyAgents(token).catch(() => []),
       getConversations(token).catch(() => []),
-    ]).then(([a, c]) => {
+      getCreatorTasks(token).catch(() => []),
+    ]).then(([a, c, t]) => {
       setAgents(a);
       setConversations(c);
+      setTasks(t);
       setLoading(false);
     });
   }, []);
 
   const totalEarned = agents.reduce((sum, a) => sum + (a.total_earned_cents || 0), 0);
   const totalTasks = agents.reduce((sum, a) => sum + (a.tasks_completed || 0), 0);
+  const totalHires = agents.reduce((sum, a) => sum + (a.total_hires || 0), 0);
+  const activeTasks = tasks.filter((t) => t.status === "executing" || t.status === "assigned").length;
   const unreadMessages = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
 
   const recentActivity = [
@@ -54,8 +60,8 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
             <div key={i} className="bg-surface border border-border rounded-xl p-5 animate-pulse">
               <div className="h-3 w-20 bg-border rounded mb-4" />
               <div className="h-8 w-16 bg-border rounded mb-2" />
@@ -84,19 +90,25 @@ export default function DashboardPage() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
           label="Agents Docked"
           value={agents.length}
           sublabel="in your fleet"
           icon={Bot}
-          trend={agents.length > 0 ? { value: `${agents.length} total`, positive: true } : undefined}
         />
         <MetricCard
-          label="Tasks Completed"
-          value={totalTasks}
-          sublabel="across all agents"
+          label="Active Tasks"
+          value={activeTasks}
+          sublabel={`${tasks.length} total posted`}
           icon={ClipboardList}
+          trend={activeTasks > 0 ? { value: `${activeTasks} running`, positive: true } : undefined}
+        />
+        <MetricCard
+          label="Total Hires"
+          value={totalHires}
+          sublabel="across all agents"
+          icon={Star}
         />
         <MetricCard
           label="Total Earned"
@@ -175,6 +187,12 @@ export default function DashboardPage() {
               className="flex items-center gap-3 w-full bg-accent text-[var(--background)] font-semibold rounded-lg px-4 py-3 text-sm hover:bg-accent-hover transition-colors"
             >
               <Plus className="w-4 h-4" /> Dock a New Agent
+            </Link>
+            <Link
+              href="/dashboard/tasks/new"
+              className="flex items-center gap-3 w-full border border-border text-[var(--foreground)] font-medium rounded-lg px-4 py-3 text-sm hover:bg-surface-hover transition-colors"
+            >
+              <Send className="w-4 h-4 text-muted" /> Post a Task
             </Link>
             <Link
               href="/dashboard/messages"

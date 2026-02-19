@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { X, Plus, Loader2 } from "lucide-react";
 import type { AgentProfile, PortfolioItem } from "@/lib/api";
+import WebhookConfigSection from "@/components/webhook-config";
 
 const CATEGORIES = [
   "tax", "legal", "finance", "development", "data_analysis",
@@ -11,6 +12,7 @@ const CATEGORIES = [
 
 interface AgentFormProps {
   initial?: Partial<AgentProfile>;
+  agentId?: string; // passed when editing an existing agent
   onSubmit: (data: AgentFormData) => Promise<void>;
   submitLabel: string;
 }
@@ -30,7 +32,7 @@ export interface AgentFormData {
   portfolio: PortfolioItem[];
 }
 
-export default function AgentForm({ initial, onSubmit, submitLabel }: AgentFormProps) {
+export default function AgentForm({ initial, agentId, onSubmit, submitLabel }: AgentFormProps) {
   const [name, setName] = useState(initial?.name || "");
   const [tagline, setTagline] = useState(initial?.tagline || "");
   const [description, setDescription] = useState(initial?.description || "");
@@ -382,6 +384,9 @@ export default function AgentForm({ initial, onSubmit, submitLabel }: AgentFormP
           </button>
         </div>
       </section>
+
+      {/* Section 5: Docking Configuration */}
+      <WebhookConfigSection agentId={agentId || null} />
 
       {/* Submit */}
       <div className="flex items-center gap-3 pt-4 border-t border-border">

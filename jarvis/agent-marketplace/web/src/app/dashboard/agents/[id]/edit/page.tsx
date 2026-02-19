@@ -76,7 +76,7 @@ export default function EditAgentPage() {
       </div>
 
       {agent && (
-        <AgentForm initial={agent} onSubmit={handleSubmit} submitLabel="Save Changes" />
+        <AgentForm initial={agent} agentId={id} onSubmit={handleSubmit} submitLabel="Save Changes" />
       )}
     </div>
   );
