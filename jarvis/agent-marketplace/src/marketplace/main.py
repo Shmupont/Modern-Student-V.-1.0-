@@ -46,21 +46,27 @@ def on_startup():
     engine = get_engine()
     SQLModel.metadata.create_all(engine)
 
-    # Add new columns to existing tables (safe to re-run — uses IF NOT EXISTS)
-    from sqlalchemy import text
+    # Add new columns to existing tables
+    from sqlalchemy import text, inspect
 
-    migrations = [
-        "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS listing_type VARCHAR DEFAULT 'chat'",
-        "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS openclaw_repo_url VARCHAR",
-        "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS openclaw_install_instructions TEXT",
-        "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS openclaw_version VARCHAR",
-    ]
+    inspector = inspect(engine)
+    existing_cols = {c["name"] for c in inspector.get_columns("agent_profiles")}
+
+    new_cols = {
+        "listing_type": "VARCHAR DEFAULT 'chat'",
+        "openclaw_repo_url": "VARCHAR",
+        "openclaw_install_instructions": "TEXT",
+        "openclaw_version": "VARCHAR",
+    }
     with engine.connect() as conn:
-        for sql in migrations:
-            try:
-                conn.execute(text(sql))
-            except Exception:
-                pass  # SQLite doesn't support IF NOT EXISTS on ALTER TABLE
+        for col_name, col_type in new_cols.items():
+            if col_name not in existing_cols:
+                try:
+                    conn.execute(text(
+                        f"ALTER TABLE agent_profiles ADD COLUMN {col_name} {col_type}"
+                    ))
+                except Exception as e:
+                    logging.warning(f"Migration skip {col_name}: {e}")
         conn.commit()
 
 
