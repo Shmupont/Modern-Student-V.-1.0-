@@ -73,3 +73,15 @@ def on_startup():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/debug/columns")
+def debug_columns():
+    from sqlalchemy import inspect
+    inspector = inspect(get_engine())
+    cols = inspector.get_columns("agent_profiles")
+    tables = inspector.get_table_names()
+    return {
+        "agent_profiles_columns": [c["name"] for c in cols],
+        "tables": tables,
+    }
