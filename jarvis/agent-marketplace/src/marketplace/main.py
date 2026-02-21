@@ -43,7 +43,25 @@ app.include_router(proxy.router)
 def on_startup():
     from . import models  # noqa: F401 — ensure all models are registered
 
-    SQLModel.metadata.create_all(get_engine())
+    engine = get_engine()
+    SQLModel.metadata.create_all(engine)
+
+    # Add new columns to existing tables (safe to re-run — uses IF NOT EXISTS)
+    from sqlalchemy import text
+
+    migrations = [
+        "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS listing_type VARCHAR DEFAULT 'chat'",
+        "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS openclaw_repo_url VARCHAR",
+        "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS openclaw_install_instructions TEXT",
+        "ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS openclaw_version VARCHAR",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+            except Exception:
+                pass  # SQLite doesn't support IF NOT EXISTS on ALTER TABLE
+        conn.commit()
 
 
 @app.get("/health")
